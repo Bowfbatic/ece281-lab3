@@ -58,27 +58,99 @@ architecture test_bench of thunderbird_fsm_tb is
 	
 	component thunderbird_fsm is 
 	  port(
-		
+		i_clk, i_reset  : in    std_logic;
+        i_left, i_right : in    std_logic;
+        o_lights_L      : out   std_logic_vector(2 downto 0);
+        o_lights_R      : out   std_logic_vector(2 downto 0)
 	  );
 	end component thunderbird_fsm;
 
 	-- test I/O signals
-	
+	signal w_reset : std_logic := '0';
+	signal w_clk : std_logic := '0';
+
+    signal w_left    :   std_logic :='0';
+    signal w_right    :   std_logic :='0';
+    signal w_lights_L :   std_logic_vector (2 downto 0) := "000";
+    signal w_lights_R :   std_logic_vector (2 downto 0) := "000";  
+    
 	-- constants
-	
-	
+	constant k_clk_period : time := 10 ns;
 begin
 	-- PORT MAPS ----------------------------------------
-	
+	uut    :   thunderbird_fsm port map(
+	   i_reset => w_reset,
+	   i_clk => w_clk,
+	   i_left => w_left,
+	   i_right => w_right,
+	   o_lights_L => w_lights_L,
+	   o_lights_R => w_lights_R
+	);
 	-----------------------------------------------------
 	
 	-- PROCESSES ----------------------------------------	
     -- Clock process ------------------------------------
-    
+    clk_proc : process
+	begin
+		w_clk <= '0';
+        wait for k_clk_period/2;
+		w_clk <= '1';
+		wait for k_clk_period/2;
+	end process;
 	-----------------------------------------------------
 	
 	-- Test Plan Process --------------------------------
+	sim_proc: process
+	begin
+	    -- sequential timing ? what is that
+	    w_reset <= '1';
+		wait for k_clk_period*1;
+		  assert w_lights_L = "000" and w_lights_R = "000" report "bad reset" severity failure;
+		
+		w_reset <= '0';
+		wait for k_clk_period*1;
+		
+		
+		--light is off when both inputs are off
+		w_left <= '0'; w_right <= '0'; wait for k_clk_period;
+		  assert w_lights_L <= "000" and w_lights_R <= "000" report "should be off with no input" severity failure;
+		--both on
+		w_left <= '1'; w_right <= '1'; wait for k_clk_period;
+		  assert w_lights_L <= "111" and w_lights_R <= "111" report "should be on with both input" severity failure;
+		--reset off
+		wait for k_clk_period;
+		  assert w_lights_L <= "000" and w_lights_R <= "000" report "should default to off after both lights are on" severity failure;
+		
+		--testing left lights
+		--first light should turn on
+	    w_left <= '1'; w_right <='0'; wait for k_clk_period;
+	      assert w_lights_L <= "001" and w_lights_R <= "000" report "La should be on and right should be off" severity failure;
+	    --second light should also turn on
+	    wait for k_clk_period;
+	      assert w_lights_L <= "011" and w_lights_R <= "000" report "Lb should also be on and right should be off" severity failure;
+        --third light should also turn on, all lights should be one
+        wait for k_clk_period;
+	      assert w_lights_L <= "111" and w_lights_R <= "000" report "Lc should also be on and right should be off" severity failure;
+	    --reset off
+	    wait for k_clk_period;
+	      assert w_lights_L <= "000" and w_lights_R <= "000" report "should default to off after both lights are on" severity failure;
+	      
+	    --testing right lights
+	    --first light should turn on
+	    w_left <= '0'; w_right <= '1'; wait for k_clk_period;
+	      assert w_lights_L <= "000" and w_lights_R <= "001" report "Ra should be on and left should be off" severity failure;
+	    --second light should also turn on
+	    wait for k_clk_period;
+	      assert w_lights_L <= "000" and w_lights_R <= "011" report "Rb should be on and left should be off" severity failure;
+	    --third light should also turn on
+	    wait for k_clk_period;
+	      assert w_lights_L <= "000" and w_lights_R <= "111" report "Rc should be on and left should be off" severity failure;
+	    --reset off
+	    wait for k_clk_period;
+	      assert w_lights_L <= "000" and w_lights_R <= "000" report "should default to off after both lights are on" severity failure;
 	
+	wait;
+	end process;
 	-----------------------------------------------------	
 	
 end test_bench;
